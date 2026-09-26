@@ -11,7 +11,7 @@ body{margin:0;background:#f6f7f9;color:#15181e;font:15px/1.5 -apple-system,Segoe
 label{display:block;font-size:12px;color:#6b7280;margin:8px 0 4px}
 input,textarea{width:100%;padding:11px;border:1px solid #e3e6ea;border-radius:10px;background:#f6f7f9;font:inherit}
 input:focus,textarea:focus{outline:2px solid #f2b01e}
-textarea{height:110px;font-size:12px}
+textarea{height:100px;font-size:12px}
 .row{display:flex;gap:10px}.row>div{flex:1}
 .btn{width:100%;padding:13px;border:0;border-radius:12px;background:#f2b01e;color:#1c1c1c;font-weight:800;font-size:15px;font-family:inherit;margin-top:10px}
 .btn.ghost{background:transparent;border:1px solid #e3e6ea;color:#15181e;font-weight:600;font-size:13px;padding:9px}
@@ -35,16 +35,19 @@ h3{margin:0 0 4px;font-size:15px}
   <div class="row">
     <div><label>SKU (reference)</label><input id="fSku" placeholder="CJ-…"></div>
     <div><label>Price (QAR)</label><input id="fPrice" type="number" step="0.01" min="0" placeholder="0.00"></div>
+    <div><label>Qty (stock)</label><input id="fQty" type="number" step="1" min="0" placeholder="0"></div>
   </div>
   <button class="btn" id="saveBtn">Save product</button>
   <div id="fMsg" style="margin-top:8px;font-size:13px"></div>
 </div>
 
 <div class="card">
-  <h3>⬆ Import many products</h3>
-  <p style="font-size:12px;color:#6b7280;margin:4px 0">Copy rows from Excel (with a header line: Barcode, Name, SKU, Price — any order) and paste here. New barcodes are added; existing ones get the new name/price.</p>
-  <textarea id="imp" placeholder="Barcode&#9;Name&#9;SKU&#9;Price&#10;8668812345678&#9;New toy&#9;CJ-999&#9;99"></textarea>
-  <button class="btn ghost" id="prevBtn">👀 Check what will happen</button>
+  <h3>⬆ Import from Excel</h3>
+  <p style="font-size:12px;color:#6b7280;margin:4px 0">Choose your Excel file (a header row with Barcode, Name, SKU, Price, Qty — any order, extra columns ignored). Rule: a barcode that already exists keeps its name — only <b>price and qty</b> are updated. New barcodes are added in full.</p>
+  <input type="file" id="impFile" accept=".xlsx,.csv" style="padding:9px">
+  <button class="btn ghost" id="pasteTgl" style="margin-top:8px">…or paste rows as text</button>
+  <textarea id="imp" style="display:none" placeholder="Barcode&#9;Name&#9;SKU&#9;Price&#9;Qty"></textarea>
+  <button class="btn ghost" id="prevBtn" style="display:none">👀 Check the pasted rows</button>
   <button class="btn" id="applyBtn" style="display:none">✔ Apply the import</button>
   <div id="iMsg" style="margin-top:8px;font-size:13px"></div>
 </div>
@@ -138,17 +141,82 @@ function buildXlsx(rows){ // rows: arrays; row0 = header. cell {n:num,s:styleIdx
   return zipStore(files);
 }
 
+
+// ---- read a real .xlsx file in the browser ----
+function u16le(b,o){return b[o]|(b[o+1]<<8)}
+function u32le(b,o){return (b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0}
+function unesc(s){return s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+  .replace(/&#x([0-9a-f]+);/gi,function(_,h){return String.fromCharCode(parseInt(h,16))})
+  .replace(/&#(\d+);/g,function(_,d){return String.fromCharCode(+d)}).replace(/&amp;/g,'&')}
+function zipEntries(buf){
+  var b=new Uint8Array(buf), i=b.length-22, end=Math.max(0,b.length-65558);
+  while(i>end && u32le(b,i)!==0x06054b50)i--;
+  if(u32le(b,i)!==0x06054b50)throw 'not a zip';
+  var n=u16le(b,i+10), off=u32le(b,i+16), out={}, p=off;
+  for(var k=0;k<n;k++){
+    if(u32le(b,p)!==0x02014b50)break;
+    var method=u16le(b,p+10), csize=u32le(b,p+20), nlen=u16le(b,p+28), elen=u16le(b,p+30), clen=u16le(b,p+32),
+        lofs=u32le(b,p+42), name=new TextDecoder().decode(b.slice(p+46,p+46+nlen));
+    out[name]={method:method,csize:csize,lofs:lofs};
+    p+=46+nlen+elen+clen;
+  }
+  return {bytes:b,entries:out};
+}
+function zipRead(z,name){
+  var e=z.entries[name]; if(!e)return Promise.resolve(null);
+  var b=z.bytes, p=e.lofs;
+  var nlen=u16le(b,p+26), elen=u16le(b,p+28), start=p+30+nlen+elen;
+  var slice=b.slice(start,start+e.csize);
+  if(e.method===0)return Promise.resolve(new TextDecoder().decode(slice));
+  if(typeof DecompressionStream==='undefined')return Promise.reject('old browser');
+  return new Response(new Blob([slice]).stream().pipeThrough(new DecompressionStream('deflate-raw')))
+    .arrayBuffer().then(function(ab){return new TextDecoder().decode(ab)});
+}
+function colIdx(ref){var m=ref.match(/^[A-Z]+/);if(!m)return 0;var s=m[0],n=0;
+  for(var i=0;i<s.length;i++)n=n*26+(s.charCodeAt(i)-64);return n-1}
+function parseXlsx(buf){
+  var z=zipEntries(buf);
+  var sheetName=Object.keys(z.entries).filter(function(n){return /^xl\/worksheets\/sheet\d*\.xml$/.test(n)}).sort()[0];
+  if(!sheetName)throw 'no sheet found';
+  return Promise.all([zipRead(z,'xl/sharedStrings.xml'),zipRead(z,sheetName)]).then(function(r){
+    var ss=[], sx=r[0]||'';
+    var m, siRe=/<si[ >][\s\S]*?<\/si>/g;
+    while((m=siRe.exec(sx))){
+      var ts='', tRe=/<t[^>]*>([\s\S]*?)<\/t>/g, t2;
+      while((t2=tRe.exec(m[0])))ts+=t2[1];
+      ss.push(unesc(ts));
+    }
+    var rows=[], rowRe=/<row[^>]*>([\s\S]*?)<\/row>/g, rm;
+    while((rm=rowRe.exec(r[1]))){
+      var cells=[], cRe=/<c ([^>]*?)\/>|<c ([^>]*?)>([\s\S]*?)<\/c>/g, cm;
+      while((cm=cRe.exec(rm[1]))){
+        var attrs=cm[1]||cm[2]||'', inner=cm[3]||'';
+        var ref=(attrs.match(/r="([A-Z]+\d+)"/)||[])[1]||'';
+        var typ=(attrs.match(/t="(\w+)"/)||[])[1]||'';
+        var val='';
+        if(typ==='inlineStr'){var it=inner.match(/<t[^>]*>([\s\S]*?)<\/t>/);val=it?unesc(it[1]):''}
+        else{var v=inner.match(/<v>([\s\S]*?)<\/v>/);val=v?v[1]:'';
+          if(typ==='s')val=ss[+val]||''; else val=unesc(val)}
+        cells[ref?colIdx(ref):cells.length]=val;
+      }
+      rows.push(cells);
+    }
+    return rows;
+  });
+}
+
 var CAT={}, UPDATED='', showAll=false, pending=null;
 var $=function(id){return document.getElementById(id)};
 function lsSet(){try{localStorage.setItem('gmx_admin',JSON.stringify({updated:UPDATED,products:CAT}))}catch(e){}}
 function lsGet(){try{return JSON.parse(localStorage.getItem('gmx_admin')||'null')}catch(e){return null}}
 function count(){$('count').textContent=Object.keys(CAT).length+' products'}
 function today(){return new Date().toISOString().slice(0,10)}
+function qtyOf(v){return v.length>3&&v[3]!=null?v[3]:''}
 function item(b){
   var v=CAT[b], d=document.createElement('div');d.className='item';
-  d.innerHTML='<div style="flex:1"><b>'+v[0].replace(/</g,'&lt;')+'</b><small>'+v[1]+' · '+b+' · '+v[2]+' QR</small></div>';
+  d.innerHTML='<div style="flex:1"><b>'+v[0].replace(/</g,'&lt;')+'</b><small>'+v[1]+' · '+b+' · '+v[2]+' QR'+(qtyOf(v)!==''?' · '+qtyOf(v)+' pcs':'')+'</small></div>';
   var e=document.createElement('button');e.className='btn ghost';e.style.width='auto';e.style.margin='0';e.textContent='✏';
-  e.onclick=function(){$('fBc').value=b;$('fName').value=v[0];$('fSku').value=v[1];$('fPrice').value=v[2];
+  e.onclick=function(){$('fBc').value=b;$('fName').value=v[0];$('fSku').value=v[1];$('fPrice').value=v[2];$('fQty').value=qtyOf(v);
     $('formTitle').textContent='✏ Edit product';window.scrollTo({top:0,behavior:'smooth'})};
   var x=document.createElement('button');x.className='btn ghost red';x.style.width='auto';x.style.margin='0';x.textContent='🗑';
   x.onclick=function(){if(confirm('Delete '+v[0]+' from the catalog?')){delete CAT[b];UPDATED=today();lsSet();count();renderList()}};
@@ -169,62 +237,96 @@ $('allBtn').onclick=function(){showAll=!showAll;$('q').value='';
   this.textContent=showAll?'✕ Hide the full list':'👁 View ALL products';renderList()};
 $('saveBtn').onclick=function(){
   var b=$('fBc').value.trim().replace(/\s+/g,''),n=$('fName').value.trim(),
-      s=$('fSku').value.trim(),p=parseFloat($('fPrice').value||'0');
+      s=$('fSku').value.trim(),p=parseFloat($('fPrice').value||'0'),qv=$('fQty').value;
   var m=$('fMsg');
   if(!b||!n){m.innerHTML='<span class="warn">Barcode and name are needed</span>';return}
-  CAT[b]=[n,s,Math.round(p*100)/100||0];UPDATED=today();lsSet();count();
+  CAT[b]=[n,s,Math.round(p*100)/100||0, qv===''?'':parseInt(qv,10)||0];UPDATED=today();lsSet();count();
   m.innerHTML='<span class="ok">Saved ✓ — press Copy catalog.json below to publish</span>';
-  $('fBc').value='';$('fName').value='';$('fSku').value='';$('fPrice').value='';
+  $('fBc').value='';$('fName').value='';$('fSku').value='';$('fPrice').value='';$('fQty').value='';
   $('formTitle').textContent='＋ Add one product';$('q').value=b;showAll=false;renderList();
 };
-function parseImport(txt){
-  var lines=txt.split(/\r?\n/).filter(function(l){return l.trim()});
-  if(!lines.length)return {err:'Nothing pasted yet'};
-  var sep=lines[0].indexOf('\t')!==-1?'\t':(lines[0].split(';').length>lines[0].split(',').length?';':',');
-  var idx={bc:0,name:1,sku:2,price:3}, start=0;
-  var h=lines[0].toLowerCase();
-  if(h.indexOf('barcode')!==-1||h.indexOf('name')!==-1||h.indexOf('price')!==-1){
-    var cols=lines[0].split(sep).map(function(c){return c.trim().toLowerCase()});
-    cols.forEach(function(c,i){
-      if(c.indexOf('barcode')!==-1)idx.bc=i;
-      else if(c.indexOf('sku')!==-1||c.indexOf('reference')!==-1)idx.sku=i;
-      else if(c.indexOf('price')!==-1)idx.price=i;
-      else if(c.indexOf('name')!==-1||c.indexOf('product')!==-1)idx.name=i;
-    });start=1;
-  }
-  var add=0,upd=0,bad=[],out={};
-  for(var i=start;i<lines.length;i++){
-    var p=lines[i].split(sep).map(function(c){return c.trim().replace(/^"|"$/g,'')});
-    var bc=(p[idx.bc]||'').replace(/\s+/g,'');
-    var name=p[idx.name]||'', sku=p[idx.sku]||'', price=parseFloat(String(p[idx.price]||'0').replace(/[^0-9.]/g,''))||0;
-    if(/e\+/i.test(bc)){bad.push('line '+(i+1)+': broken barcode '+bc+' (Excel damaged it — re-copy from a text column)');continue}
-    if(!/^\d{6,14}$/.test(bc)){bad.push('line '+(i+1)+': barcode looks wrong: '+(bc||'(empty)'));continue}
-    if(!name){bad.push('line '+(i+1)+': no name');continue}
-    if(CAT[bc])upd++;else add++;
-    out[bc]=[name.slice(0,70),sku,Math.round(price*100)/100];
-  }
-  return {add:add,upd:upd,bad:bad,out:out};
+function mapHeader(cols){
+  var idx={bc:-1,name:-1,sku:-1,price:-1,qty:-1};
+  cols.forEach(function(c,i){c=String(c||'').trim().toLowerCase();
+    if(c.indexOf('barcode')!==-1)idx.bc=i;
+    else if(c.indexOf('sku')!==-1||c.indexOf('reference')!==-1)idx.sku=i;
+    else if(c.indexOf('price')!==-1)idx.price=i;
+    else if(c.indexOf('forecast')===-1&&(c.indexOf('on hand')!==-1||((c.indexOf('qty')!==-1||c.indexOf('quantity')!==-1)&&idx.qty===-1)))idx.qty=i;
+    else if(c.indexOf('name')!==-1||c.indexOf('product')!==-1)idx.name=i;});
+  return idx;
 }
-$('prevBtn').onclick=function(){
-  var r=parseImport($('imp').value), m=$('iMsg');pending=null;$('applyBtn').style.display='none';
+function digestRows(rows){
+  if(!rows.length)return {err:'The file looks empty'};
+  var idx=mapHeader(rows[0]), start=1;
+  if(idx.bc===-1&&idx.name===-1){idx={bc:0,name:1,sku:2,price:3,qty:4};start=0}
+  if(idx.bc===-1)return {err:'No Barcode column found in the header row'};
+  var add=0,priceUpd=0,bad=[],out={};
+  for(var i=start;i<rows.length;i++){
+    var p=rows[i]||[];
+    var bc=String(p[idx.bc]||'').trim().replace(/\s+/g,'').replace(/\.0$/,'');
+    if(!bc)continue;
+    if(/e\+/i.test(bc)){bad.push('row '+(i+1)+': broken barcode '+bc);continue}
+    if(!/^\d{6,14}$/.test(bc)){bad.push('row '+(i+1)+': barcode looks wrong: '+bc);continue}
+    var name=String(idx.name>-1?(p[idx.name]||''):'').trim();
+    var sku=String(idx.sku>-1?(p[idx.sku]||''):'').trim();
+    var price=parseFloat(String(idx.price>-1?(p[idx.price]||'0'):'0').replace(/[^0-9.]/g,''))||0;
+    var qraw=idx.qty>-1?String(p[idx.qty]||'').trim():'';
+    var qty=qraw===''?'':(parseInt(parseFloat(qraw),10)||0);
+    if(CAT[bc]){ // existing item code: keep name & sku, update price + qty only
+      out[bc]=[CAT[bc][0],CAT[bc][1],Math.round(price*100)/100,qty===''?qtyOf(CAT[bc]):qty];priceUpd++;
+    }else{
+      if(!name){bad.push('row '+(i+1)+': new barcode without a name');continue}
+      out[bc]=[name.slice(0,70),sku,Math.round(price*100)/100,qty===''?'':qty];add++;
+    }
+  }
+  return {add:add,upd:priceUpd,bad:bad,out:out};
+}
+function showDigest(r){
+  var m=$('iMsg');pending=null;$('applyBtn').style.display='none';
   if(r.err){m.innerHTML='<span class="warn">'+r.err+'</span>';return}
-  var html='<b>'+r.add+'</b> new · <b>'+r.upd+'</b> updated';
+  var html='<b>'+r.add+'</b> new products · <b>'+r.upd+'</b> existing (price & qty updated, names kept)';
   if(r.bad.length)html+='<br><span class="warn">Skipped '+r.bad.length+':</span><br><small>'+r.bad.slice(0,5).join('<br>')+'</small>';
   m.innerHTML=html;
   if(r.add+r.upd>0){pending=r.out;$('applyBtn').style.display='block'}
+}
+$('impFile').addEventListener('change',function(){
+  var f=this.files[0]; if(!f)return;
+  $('iMsg').textContent='Reading '+f.name+'…';
+  var rd=new FileReader();
+  if(/\.csv$/i.test(f.name)){
+    rd.onload=function(){var lines=String(rd.result).split(/\r?\n/).filter(function(l){return l.trim()});
+      var sep=lines[0]&&lines[0].indexOf(';')>lines[0].indexOf(',')?';':',';
+      showDigest(digestRows(lines.map(function(l){return l.split(sep).map(function(c){return c.replace(/^"|"$/g,'')})})))};
+    rd.readAsText(f);
+  }else{
+    rd.onload=function(){
+      parseXlsx(rd.result).then(function(rows){showDigest(digestRows(rows))})
+      .catch(function(e){$('iMsg').innerHTML='<span class="warn">Could not read this Excel file ('+e+') — try “paste rows as text”</span>'})};
+    rd.readAsArrayBuffer(f);
+  }
+});
+$('pasteTgl').onclick=function(){
+  var s=$('imp').style.display==='none';
+  $('imp').style.display=s?'block':'none';$('prevBtn').style.display=s?'block':'none';
+};
+$('prevBtn').onclick=function(){
+  var lines=$('imp').value.split(/\r?\n/).filter(function(l){return l.trim()});
+  if(!lines.length){showDigest({err:'Nothing pasted yet'});return}
+  var sep=lines[0].indexOf('\t')!==-1?'\t':(lines[0].split(';').length>lines[0].split(',').length?';':',');
+  showDigest(digestRows(lines.map(function(l){return l.split(sep).map(function(c){return c.trim().replace(/^"|"$/g,'')})})));
 };
 $('applyBtn').onclick=function(){
   if(!pending)return;
   Object.keys(pending).forEach(function(b){CAT[b]=pending[b]});
   UPDATED=today();lsSet();count();renderList();
   $('iMsg').innerHTML='<span class="ok">Imported ✓ — now press Copy catalog.json below to publish to the shops</span>';
-  $('imp').value='';pending=null;this.style.display='none';
+  $('impFile').value='';$('imp').value='';pending=null;this.style.display='none';
 };
 $('xlsBtn').onclick=function(){
   try{
-    var rows=[['Barcode','Name','SKU','Price (QAR)']];
+    var rows=[['Barcode','Name','SKU','Price (QAR)','Qty']];
     Object.keys(CAT).sort(function(a,b){return CAT[a][0].localeCompare(CAT[b][0])}).forEach(function(b){
-      rows.push([{n:b,s:1},CAT[b][0],CAT[b][1],{n:CAT[b][2],s:2}])});
+      rows.push([{n:b,s:1},CAT[b][0],CAT[b][1],{n:CAT[b][2],s:2},qtyOf(CAT[b])===''?'':{n:qtyOf(CAT[b])}])});
     var u8=buildXlsx(rows);
     var blob=new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='GMX_Catalog_'+today()+'.xlsx';
@@ -233,8 +335,8 @@ $('xlsBtn').onclick=function(){
   }catch(e){$('eMsg').innerHTML='<span class="warn">Could not build the file — use Copy as text</span>'}
 };
 $('csvBtn').onclick=function(){
-  var out='Barcode,Name,SKU,Price\n';
-  Object.keys(CAT).forEach(function(b){out+=[b,'"'+CAT[b][0].replace(/"/g,"'")+'"',CAT[b][1],CAT[b][2]].join(',')+'\n'});
+  var out='Barcode,Name,SKU,Price,Qty\n';
+  Object.keys(CAT).forEach(function(b){out+=[b,'"'+CAT[b][0].replace(/"/g,"'")+'"',CAT[b][1],CAT[b][2],qtyOf(CAT[b])].join(',')+'\n'});
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(out).then(function(){
     $('eMsg').innerHTML='<span class="ok">Copied ✓ — paste into Excel or Notepad</span>'})}
   else prompt('Copy this:',out);
