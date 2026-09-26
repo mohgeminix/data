@@ -66,11 +66,19 @@ h3{margin:0 0 4px;font-size:15px}
 </div>
 
 <div class="card">
-  <h3>Publish to the shops</h3>
-  <p style="font-size:13px;color:#374151;margin:6px 0">1 · Press Copy. 2 · Open the <b>data</b> repository → <b>catalog.json</b> → pencil ✏ → select all → paste → <b>Commit</b>. Both shops refresh themselves.</p>
-  <button class="btn" id="copyBtn">📋 Copy catalog.json</button>
-  <button class="btn ghost" id="reloadBtn">↻ Load the live catalog (discard my unsaved edits)</button>
+  <h3>🚀 Publish to the shops</h3>
+  <p style="font-size:13px;color:#374151;margin:6px 0">One button — both shops receive the new catalog automatically.</p>
+  <button class="btn" id="pubBtn">🚀 Publish now</button>
   <div id="pMsg" style="margin-top:8px;font-size:13px"></div>
+  <div id="keyWrap" style="display:none;margin-top:10px">
+    <label>Your GitHub key (saved only on THIS device)</label>
+    <input id="keyIn" type="password" placeholder="github_pat_…">
+    <button class="btn ghost" id="keySave">Save the key on this device</button>
+    <p style="font-size:12px;color:#6b7280;margin-top:8px"><b>Make your key once (2 min):</b> github.com → your photo → Settings → Developer settings → Fine-grained tokens → Generate new token → Name: GMX · Expiration: 1 year · Repository access: <b>Only select repositories → data</b> · Permissions → Contents: <b>Read and write</b> → Generate → copy the long code here.</p>
+  </div>
+  <button class="btn ghost" id="copyBtn" style="margin-top:10px">📋 Copy catalog.json (old manual way)</button>
+  <button class="btn ghost" id="reloadBtn">↻ Load the live catalog (discard my unsaved edits)</button>
+  <button class="btn ghost" id="keyForget" style="display:none">🔒 Forget the key on this device</button>
 </div>
 </div>
 <script>
@@ -371,6 +379,44 @@ $('csvBtn').onclick=function(){
     $('eMsg').innerHTML='<span class="ok">Copied ✓ — paste into Excel or Notepad</span>'})}
   else prompt('Copy this:',out);
 };
+var OWNER='mohgeminix', REPO='data', PATH='catalog.json';
+function getKey(){try{return localStorage.getItem('gmx_key')||''}catch(e){return ''}}
+function keyUI(){var k=getKey();
+  $('keyWrap').style.display=k?'none':'block';
+  $('keyForget').style.display=k?'block':'none';}
+$('keySave').onclick=function(){var v=$('keyIn').value.trim();
+  if(v.length<20){$('pMsg').innerHTML='<span class="warn">That does not look like a key</span>';return}
+  try{localStorage.setItem('gmx_key',v)}catch(e){}
+  $('keyIn').value='';keyUI();$('pMsg').innerHTML='<span class="ok">Key saved on this device ✓ — press Publish now</span>'};
+$('keyForget').onclick=function(){if(confirm('Remove the key from this device?')){
+  try{localStorage.removeItem('gmx_key')}catch(e){}keyUI();$('pMsg').textContent=''}};
+function b64u(s){return btoa(unescape(encodeURIComponent(s)))}
+function apiUrl(){return 'https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/'+PATH}
+function publish(retry){
+  var k=getKey();
+  if(!k){keyUI();$('pMsg').innerHTML='<span class="warn">First save your GitHub key below (one time)</span>';return}
+  UPDATED=today();
+  var txt=JSON.stringify({updated:UPDATED,products:CAT});
+  $('pMsg').textContent='Publishing…';
+  var H={'Authorization':'Bearer '+k,'Accept':'application/vnd.github+json'};
+  fetch(apiUrl(),{headers:H}).then(function(r){
+    if(r.status===401)throw 'key not accepted — make a new key';
+    if(!r.ok)throw 'cannot reach the file (check the key covers the data repository)';
+    return r.json();
+  }).then(function(j){
+    return fetch(apiUrl(),{method:'PUT',headers:H,body:JSON.stringify({
+      message:'update catalog '+UPDATED,content:b64u(txt),sha:j.sha})});
+  }).then(function(r){
+    if(r.status===409&&!retry){publish(true);return null}
+    if(!r.ok)throw 'GitHub refused the save ('+r.status+')';
+    lsSet();
+    $('pMsg').innerHTML='<span class="ok">Published ✓ ('+Object.keys(CAT).length+' products) — shops receive it on their next open</span>';
+  }).catch(function(e){
+    $('pMsg').innerHTML='<span class="warn">'+e+'</span><br><small>The manual Copy way below always works.</small>';
+  });
+}
+$('pubBtn').onclick=function(){publish(false)};
+keyUI();
 $('copyBtn').onclick=function(){
   UPDATED=today();
   var txt=JSON.stringify({updated:UPDATED,products:CAT});
