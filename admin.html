@@ -4,9 +4,13 @@
 <style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *,*:before,*:after{box-sizing:inherit}
 body{margin:0;background:#f6f7f9;color:#15181e;font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif}
-.wrap{max-width:640px;margin:0 auto;padding:16px}
-.head{background:#fff;border:1px solid #e3e6ea;border-bottom:4px solid #f2b01e;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.wrap{max-width:680px;margin:0 auto;padding:16px}
+.head{background:#fff;border:1px solid #e3e6ea;border-bottom:4px solid #f2b01e;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .head img{height:44px}.head b{font-size:16px}
+.pill{font-size:11px;background:#eef0f3;border-radius:999px;padding:5px 10px;color:#374151;white-space:nowrap}
+.pill.warn{background:#fdecec;color:#c5221f;font-weight:700}
+.pill.ok{background:#e3f5e9;color:#1e8e3e;font-weight:700}
+.pill.gold{background:#fdf3dc}
 .card{background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:14px;margin-top:12px}
 label{display:block;font-size:12px;color:#6b7280;margin:8px 0 4px}
 input,textarea{width:100%;padding:11px;border:1px solid #e3e6ea;border-radius:10px;background:#f6f7f9;font:inherit}
@@ -16,17 +20,32 @@ textarea{height:100px;font-size:12px}
 .btn{width:100%;padding:13px;border:0;border-radius:12px;background:#f2b01e;color:#1c1c1c;font-weight:800;font-size:15px;font-family:inherit;margin-top:10px}
 .btn.ghost{background:transparent;border:1px solid #e3e6ea;color:#15181e;font-weight:600;font-size:13px;padding:9px}
 .btn.red{background:#fde7e7;color:#c5221f}
+.btn.mini{width:auto;margin:0;padding:8px 10px}
 .item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid #e3e6ea}
 .item:last-child{border-bottom:0}
 .item small{display:block;color:#6b7280}
-.pill{font-size:11px;background:#fdf3dc;border-radius:999px;padding:4px 9px;color:#6b7280;white-space:nowrap}
+.chip{display:inline-block;background:#f6f7f9;border:1px solid #e3e6ea;border-radius:8px;padding:2px 8px;font-size:12px;margin-right:6px}
+.chip.low{background:#fdecec;border-color:#f5c2c0;color:#c5221f;font-weight:700}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.seg button{flex:1;min-width:90px;border:1px solid #e3e6ea;background:#fff;border-radius:999px;padding:8px 4px;font:inherit;font-size:12px;color:#374151}
+.seg button.on{background:#fdf3dc;border-color:#f2b01e;font-weight:700}
 .ok{color:#1e8e3e;font-weight:700}
 .warn{color:#c5221f;font-weight:700}
 h3{margin:0 0 4px;font-size:15px}
+.banner{margin-top:12px;padding:11px 14px;border-radius:12px;font-size:13px;display:none}
+.banner.dirty{display:block;background:#fdf3dc;border:1px solid #f2b01e}
+.banner.conflict{display:block;background:#fdecec;border:1px solid #f5c2c0}
 </style></head><body><div class="wrap">
 <div class="head"><img src="data:image/png;base64,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" alt="GEMINI X">
-<div style="flex:1"><b>Catalog Manager</b><div style="font-size:11px;color:#6b7280">your control room — shops update automatically</div></div>
-<span class="pill" id="count">…</span></div>
+<div style="flex:1;min-width:150px"><b>Catalog Manager</b><div style="font-size:11px;color:#6b7280">your control room</div></div>
+<span class="pill gold" id="pDraft">…</span>
+<span class="pill" id="pLive">live: …</span>
+<span class="pill" id="pState">…</span>
+<button class="btn ghost mini" id="undoBtn" title="Undo">↶</button>
+</div>
+<div class="banner" id="banner"></div>
+
+<div class="card"><div id="stats" style="font-size:13px;color:#374151">…</div></div>
 
 <div class="card">
   <h3 id="formTitle">＋ Add one product</h3>
@@ -35,7 +54,7 @@ h3{margin:0 0 4px;font-size:15px}
   <div class="row">
     <div><label>SKU (reference)</label><input id="fSku" placeholder="CJ-…"></div>
     <div><label>Price (QAR)</label><input id="fPrice" type="number" step="0.01" min="0" placeholder="0.00"></div>
-    <div><label>Qty (stock)</label><input id="fQty" type="number" step="1" min="0" placeholder="0"></div>
+    <div><label>Qty (GMX stock)</label><input id="fQty" type="number" step="1" min="0" placeholder="0"></div>
   </div>
   <button class="btn" id="saveBtn">Save product</button>
   <div id="fMsg" style="margin-top:8px;font-size:13px"></div>
@@ -43,41 +62,48 @@ h3{margin:0 0 4px;font-size:15px}
 
 <div class="card">
   <h3>⬆ Import from Excel</h3>
-  <p style="font-size:12px;color:#6b7280;margin:4px 0">Choose your Excel file (a header row with Barcode, Name, SKU, Price, Qty — any order, extra columns ignored). Rule: a barcode that already exists keeps its name — only <b>price and qty</b> are updated. New barcodes are added in full.</p>
+  <p style="font-size:12px;color:#6b7280;margin:4px 0">Odoo export (.xlsx/.csv). Existing barcodes: name kept, price & qty updated (only if those columns exist). Shelf rows are summed. Files without barcodes match by [SKU].</p>
   <input type="file" id="impFile" accept=".xlsx,.csv" style="padding:9px">
   <button class="btn ghost" id="pasteTgl" style="margin-top:8px">…or paste rows as text</button>
-  <textarea id="imp" style="display:none" placeholder="Barcode&#9;Name&#9;SKU&#9;Price&#9;Qty"></textarea>
+  <textarea id="imp" style="display:none"></textarea>
   <button class="btn ghost" id="prevBtn" style="display:none">👀 Check the pasted rows</button>
   <button class="btn" id="applyBtn" style="display:none">✔ Apply the import</button>
   <div id="iMsg" style="margin-top:8px;font-size:13px"></div>
 </div>
 
 <div class="card">
-  <label>Search the catalog</label><input id="q" placeholder="name, SKU or barcode">
-  <button class="btn ghost" id="allBtn">👁 View ALL products</button>
-  <div id="list" style="margin-top:8px"></div>
+  <label>Find a product (name, SKU or barcode)</label><input id="q" placeholder="type here — or scan a barcode">
+  <div class="seg">
+    <button id="fAll">👁 All A→Z</button>
+    <button id="fLow">⚠ Low stock ≤5</button>
+    <button id="fZero">∅ No stock</button>
+    <button id="fNop">💰 No price</button>
+  </div>
+  <div id="list" style="margin-top:10px"></div>
 </div>
 
 <div class="card">
-  <h3>⬇ Export the catalog</h3>
-  <button class="btn ghost" id="xlsBtn">⬇ Excel file (.xlsx)</button>
-  <button class="btn ghost" id="csvBtn">📄 Copy as text (CSV)</button>
+  <h3>⬇ Export</h3>
+  <div class="row">
+    <div><button class="btn ghost" id="xlsBtn">⬇ Excel (.xlsx)</button></div>
+    <div><button class="btn ghost" id="csvBtn">📄 Copy CSV</button></div>
+  </div>
   <div id="eMsg" style="margin-top:8px;font-size:13px"></div>
 </div>
 
 <div class="card">
   <h3>🚀 Publish to the shops</h3>
-  <p style="font-size:13px;color:#374151;margin:6px 0">One button — both shops receive the new catalog automatically.</p>
+  <div id="diffLine" style="font-size:13px;color:#374151;margin:4px 0">…</div>
   <button class="btn" id="pubBtn">🚀 Publish now</button>
   <div id="pMsg" style="margin-top:8px;font-size:13px"></div>
   <div id="keyWrap" style="display:none;margin-top:10px">
     <label>Your GitHub key (saved only on THIS device)</label>
     <input id="keyIn" type="password" placeholder="github_pat_…">
     <button class="btn ghost" id="keySave">Save the key on this device</button>
-    <p style="font-size:12px;color:#6b7280;margin-top:8px"><b>Make your key once (2 min):</b> github.com → your photo → Settings → Developer settings → Fine-grained tokens → Generate new token → Name: GMX · Expiration: 1 year · Repository access: <b>Only select repositories → data</b> · Permissions → Contents: <b>Read and write</b> → Generate → copy the long code here.</p>
+    <p style="font-size:12px;color:#6b7280;margin-top:8px"><b>Make the key once:</b> github.com → photo → Settings → Developer settings → Fine-grained tokens → Generate → Only select repositories → <b>data</b> → Permissions → Contents: <b>Read and write</b> → Generate → paste here.</p>
   </div>
-  <button class="btn ghost" id="copyBtn" style="margin-top:10px">📋 Copy catalog.json (old manual way)</button>
-  <button class="btn ghost" id="reloadBtn">↻ Load the live catalog (discard my unsaved edits)</button>
+  <button class="btn ghost" id="copyBtn" style="margin-top:10px">📋 Copy catalog.json (manual backup way)</button>
+  <button class="btn ghost" id="reloadBtn">↻ Load the live catalog (discard my draft)</button>
   <button class="btn ghost" id="keyForget" style="display:none">🔒 Forget the key on this device</button>
 </div>
 </div>
@@ -213,45 +239,97 @@ function parseXlsx(buf){
   });
 }
 
-var CAT={}, UPDATED='', showAll=false, pending=null;
+
+var CAT={}, BASE={}, UPDATED='', LIVE=null, mode='none', pending=null, UNDO=[];
 var $=function(id){return document.getElementById(id)};
-function lsSet(){try{localStorage.setItem('gmx_admin',JSON.stringify({updated:UPDATED,products:CAT}))}catch(e){}}
-function lsGet(){try{return JSON.parse(localStorage.getItem('gmx_admin')||'null')}catch(e){return null}}
-function count(){$('count').textContent=Object.keys(CAT).length+' products'}
 function today(){return new Date().toISOString().slice(0,10)}
-function qtyOf(v){return v.length>3&&v[3]!=null?v[3]:''}
+function qtyOf(v){return v&&v.length>3&&v[3]!=null?v[3]:''}
+function save(){try{localStorage.setItem('gmx_admin',JSON.stringify({updated:UPDATED,products:CAT}));
+  localStorage.setItem('gmx_base',JSON.stringify(BASE))}catch(e){}}
+function pushUndo(){UNDO.push(JSON.stringify(CAT));if(UNDO.length>25)UNDO.shift();refresh()}
+$('undoBtn').onclick=function(){if(!UNDO.length){$('fMsg').innerHTML='<span class="warn">Nothing to undo</span>';return}
+  CAT=JSON.parse(UNDO.pop());save();refresh();renderList();$('fMsg').innerHTML='<span class="ok">Undone ✓</span>'};
+function diff(){
+  var a=[],e=[],d=[];
+  Object.keys(CAT).forEach(function(b){
+    if(!BASE[b])a.push(b);
+    else if(JSON.stringify(BASE[b])!==JSON.stringify(CAT[b]))e.push(b);});
+  Object.keys(BASE).forEach(function(b){if(!CAT[b])d.push(b)});
+  return {a:a,e:e,d:d,n:a.length+e.length+d.length};
+}
+function refresh(){
+  var n=Object.keys(CAT).length, units=0, zero=0, nop=0, low=0;
+  Object.keys(CAT).forEach(function(b){var q=qtyOf(CAT[b]);
+    if(q===''||q===0)zero++;else{units+=q;if(q<=5)low++}
+    if(!CAT[b][2])nop++});
+  $('pDraft').textContent='draft: '+n;
+  $('pLive').textContent='live: '+(LIVE==null?'…':LIVE);
+  $('stats').innerHTML='<b>'+n+'</b> products · <b>'+units.toLocaleString()+'</b> pcs in GMX warehouse · '
+    +'<b>'+low+'</b> low stock (≤5) · <b>'+zero+'</b> no stock · <b>'+nop+'</b> no price';
+  var df=diff(), st=$('pState'), bn=$('banner');
+  if(df.n===0){st.textContent='✓ published';st.className='pill ok';bn.className='banner';bn.innerHTML=''}
+  else{st.textContent='✎ '+df.n+' change'+(df.n>1?'s':'');st.className='pill warn';
+    bn.className='banner dirty';
+    bn.innerHTML='You have <b>'+df.n+'</b> unpublished change'+(df.n>1?'s':'')+' — press <b>🚀 Publish now</b> when ready.'}
+  $('diffLine').innerHTML=df.n?('Will publish: <b>+'+df.a.length+'</b> new · <b>✏'+df.e.length+'</b> edited · <b>🗑'+df.d.length+'</b> deleted'):'Nothing new — the shops already have this exact catalog.';
+  window.onbeforeunload=df.n?function(){return 'Unpublished changes'}:null;
+}
+function chip(b){
+  var v=CAT[b], q=qtyOf(v), lowc=(q!==''&&q<=5)?' low':'';
+  return '<span class="chip" data-p="'+b+'">'+v[2]+' QR</span><span class="chip'+lowc+'" data-q="'+b+'">'+(q===''?'— pcs':q+' pcs')+'</span>';
+}
 function item(b){
   var v=CAT[b], d=document.createElement('div');d.className='item';
-  d.innerHTML='<div style="flex:1"><b>'+v[0].replace(/</g,'&lt;')+'</b><small>'+v[1]+' · '+b+' · '+v[2]+' QR'+(qtyOf(v)!==''?' · '+qtyOf(v)+' pcs':'')+'</small></div>';
-  var e=document.createElement('button');e.className='btn ghost';e.style.width='auto';e.style.margin='0';e.textContent='✏';
+  d.innerHTML='<div style="flex:1"><b>'+v[0].replace(/</g,'&lt;')+'</b><small>'+v[1]+' · '+b+'</small><div style="margin-top:3px">'+chip(b)+'</div></div>';
+  var e=document.createElement('button');e.className='btn ghost mini';e.textContent='✏';
   e.onclick=function(){$('fBc').value=b;$('fName').value=v[0];$('fSku').value=v[1];$('fPrice').value=v[2];$('fQty').value=qtyOf(v);
     $('formTitle').textContent='✏ Edit product';window.scrollTo({top:0,behavior:'smooth'})};
-  var x=document.createElement('button');x.className='btn ghost red';x.style.width='auto';x.style.margin='0';x.textContent='🗑';
-  x.onclick=function(){if(confirm('Delete '+v[0]+' from the catalog?')){delete CAT[b];UPDATED=today();lsSet();count();renderList()}};
-  d.appendChild(e);d.appendChild(x);return d;
+  var x=document.createElement('button');x.className='btn ghost mini red';x.textContent='🗑';
+  x.onclick=function(){if(confirm('Delete '+v[0]+'?')){pushUndo();delete CAT[b];UPDATED=today();save();refresh();renderList()}};
+  d.appendChild(e);d.appendChild(x);
+  d.querySelector('[data-p]').onclick=function(){var nv=prompt('New price for '+v[0],v[2]);
+    if(nv===null)return;pushUndo();CAT[b][2]=Math.round(parseFloat(nv||'0')*100)/100||0;UPDATED=today();save();refresh();renderList()};
+  d.querySelector('[data-q]').onclick=function(){var nv=prompt('New GMX stock for '+v[0],q===''?'':qtyOf(v));
+    if(nv===null)return;pushUndo();CAT[b][3]=nv===''?'':(parseInt(nv,10)||0);UPDATED=today();save();refresh();renderList()};
+  return d;
 }
 function renderList(){
   var q=$('q').value.trim().toLowerCase(), box=$('list'); box.innerHTML='';
-  var keys;
-  if(q){keys=Object.keys(CAT).filter(function(b){var v=CAT[b];
-    return b.indexOf(q)!==-1||v[0].toLowerCase().indexOf(q)!==-1||String(v[1]).toLowerCase().indexOf(q)!==-1}).slice(0,50)}
-  else if(showAll){keys=Object.keys(CAT).sort(function(a,b){return CAT[a][0].localeCompare(CAT[b][0])})}
-  else{box.innerHTML='<div style="color:#6b7280;font-size:13px">Type to search, or press “View ALL”.</div>';return}
-  if(!keys.length){box.innerHTML='<div style="color:#6b7280;font-size:13px">Nothing found — you can add it above.</div>';return}
+  ['fAll','fLow','fZero','fNop'].forEach(function(id){$(id).className=''});
+  var keys=Object.keys(CAT);
+  if(q){keys=keys.filter(function(b){var v=CAT[b];
+      return b.indexOf(q)!==-1||v[0].toLowerCase().indexOf(q)!==-1||String(v[1]).toLowerCase().indexOf(q)!==-1}).slice(0,60);
+    if(!keys.length&&/^\d{6,14}$/.test(q)){
+      box.innerHTML='<div style="font-size:13px;color:#6b7280">Barcode not in the catalog.</div>';
+      var ab=document.createElement('button');ab.className='btn ghost';ab.textContent='＋ Add '+q+' as a new product';
+      ab.onclick=function(){$('fBc').value=q;$('fName').focus();window.scrollTo({top:0,behavior:'smooth'})};
+      box.appendChild(ab);return}}
+  else if(mode==='az'){$('fAll').className='on';keys.sort(function(a,b){return CAT[a][0].localeCompare(CAT[b][0])})}
+  else if(mode==='low'){$('fLow').className='on';keys=keys.filter(function(b){var x=qtyOf(CAT[b]);return x!==''&&x>0&&x<=5})
+      .sort(function(a,b){return qtyOf(CAT[a])-qtyOf(CAT[b])})}
+  else if(mode==='zero'){$('fZero').className='on';keys=keys.filter(function(b){var x=qtyOf(CAT[b]);return x===''||x===0})
+      .sort(function(a,b){return CAT[a][0].localeCompare(CAT[b][0])})}
+  else if(mode==='nop'){$('fNop').className='on';keys=keys.filter(function(b){return !CAT[b][2]})}
+  else{box.innerHTML='<div style="color:#6b7280;font-size:13px">Type to search, or pick a view above.</div>';return}
+  if(!keys.length){box.innerHTML='<div style="color:#6b7280;font-size:13px">Nothing in this view 🎉</div>';return}
+  var top=document.createElement('div');top.style.cssText='font-size:12px;color:#6b7280;margin-bottom:4px';
+  top.textContent=keys.length+' product'+(keys.length>1?'s':'');box.appendChild(top);
   keys.forEach(function(b){box.appendChild(item(b))});
 }
-$('q').addEventListener('input',function(){showAll=false;$('allBtn').textContent='👁 View ALL products';renderList()});
-$('allBtn').onclick=function(){showAll=!showAll;$('q').value='';
-  this.textContent=showAll?'✕ Hide the full list':'👁 View ALL products';renderList()};
+$('q').addEventListener('input',function(){mode='none';renderList()});
+$('fAll').onclick=function(){$('q').value='';mode='az';renderList()};
+$('fLow').onclick=function(){$('q').value='';mode='low';renderList()};
+$('fZero').onclick=function(){$('q').value='';mode='zero';renderList()};
+$('fNop').onclick=function(){$('q').value='';mode='nop';renderList()};
 $('saveBtn').onclick=function(){
   var b=$('fBc').value.trim().replace(/\s+/g,''),n=$('fName').value.trim(),
       s=$('fSku').value.trim(),p=parseFloat($('fPrice').value||'0'),qv=$('fQty').value;
-  var m=$('fMsg');
-  if(!b||!n){m.innerHTML='<span class="warn">Barcode and name are needed</span>';return}
-  CAT[b]=[n,s,Math.round(p*100)/100||0, qv===''?'':parseInt(qv,10)||0];UPDATED=today();lsSet();count();
-  m.innerHTML='<span class="ok">Saved ✓ — press Copy catalog.json below to publish</span>';
+  if(!b||!n){$('fMsg').innerHTML='<span class="warn">Barcode and name are needed</span>';return}
+  pushUndo();
+  CAT[b]=[n.slice(0,70),s,Math.round(p*100)/100||0, qv===''?'':parseInt(qv,10)||0];UPDATED=today();save();refresh();
+  $('fMsg').innerHTML='<span class="ok">Saved ✓</span>';
   $('fBc').value='';$('fName').value='';$('fSku').value='';$('fPrice').value='';$('fQty').value='';
-  $('formTitle').textContent='＋ Add one product';$('q').value=b;showAll=false;renderList();
+  $('formTitle').textContent='＋ Add one product';$('q').value=b;mode='none';renderList();
 };
 function mapHeader(cols){
   var idx={bc:-1,name:-1,sku:-1,price:-1,qty:-1};
@@ -316,13 +394,14 @@ function digestRows(rows){
   });
   return {add:add,upd:upd,bad:bad,out:out,dups:dupRows,hasPrice:hasPrice,hasQty:hasQty,bySku:bySku};
 }
+
 function showDigest(r){
   var m=$('iMsg');pending=null;$('applyBtn').style.display='none';
   if(r.err){m.innerHTML='<span class="warn">'+r.err+'</span>';return}
   var what=r.hasPrice&&r.hasQty?'price & qty':(r.hasQty?'qty only':'price only');
-  var html='<b>'+r.add+'</b> new products · <b>'+r.upd+'</b> existing ('+what+' updated, names kept)';
-  if(r.dups)html+='<br><small>'+r.dups+' extra shelf rows were summed into their products</small>';
-  if(r.bySku)html+='<br><small>matched by SKU (no barcode column in this file)</small>';
+  var html='<b>'+r.add+'</b> new · <b>'+r.upd+'</b> existing ('+what+' updated, names kept)';
+  if(r.dups)html+='<br><small>'+r.dups+' shelf rows summed</small>';
+  if(r.bySku)html+='<br><small>matched by SKU (no barcode column)</small>';
   if(r.bad.length)html+='<br><span class="warn">Skipped '+r.bad.length+':</span><br><small>'+r.bad.slice(0,5).join('<br>')+'</small>';
   m.innerHTML=html;
   if(r.add+r.upd>0){pending=r.out;$('applyBtn').style.display='block'}
@@ -337,16 +416,13 @@ $('impFile').addEventListener('change',function(){
       showDigest(digestRows(lines.map(function(l){return l.split(sep).map(function(c){return c.replace(/^"|"$/g,'')})})))};
     rd.readAsText(f);
   }else{
-    rd.onload=function(){
-      parseXlsx(rd.result).then(function(rows){showDigest(digestRows(rows))})
-      .catch(function(e){$('iMsg').innerHTML='<span class="warn">Could not read this Excel file ('+e+') — try “paste rows as text”</span>'})};
+    rd.onload=function(){parseXlsx(rd.result).then(function(rows){showDigest(digestRows(rows))})
+      .catch(function(e){$('iMsg').innerHTML='<span class="warn">Could not read this Excel ('+e+') — try paste as text</span>'})};
     rd.readAsArrayBuffer(f);
   }
 });
-$('pasteTgl').onclick=function(){
-  var s=$('imp').style.display==='none';
-  $('imp').style.display=s?'block':'none';$('prevBtn').style.display=s?'block':'none';
-};
+$('pasteTgl').onclick=function(){var s=$('imp').style.display==='none';
+  $('imp').style.display=s?'block':'none';$('prevBtn').style.display=s?'block':'none'};
 $('prevBtn').onclick=function(){
   var lines=$('imp').value.split(/\r?\n/).filter(function(l){return l.trim()});
   if(!lines.length){showDigest({err:'Nothing pasted yet'});return}
@@ -354,10 +430,10 @@ $('prevBtn').onclick=function(){
   showDigest(digestRows(lines.map(function(l){return l.split(sep).map(function(c){return c.trim().replace(/^"|"$/g,'')})})));
 };
 $('applyBtn').onclick=function(){
-  if(!pending)return;
+  if(!pending)return;pushUndo();
   Object.keys(pending).forEach(function(b){CAT[b]=pending[b]});
-  UPDATED=today();lsSet();count();renderList();
-  $('iMsg').innerHTML='<span class="ok">Imported ✓ — now press Copy catalog.json below to publish to the shops</span>';
+  UPDATED=today();save();refresh();renderList();
+  $('iMsg').innerHTML='<span class="ok">Imported ✓ — press 🚀 Publish now to send it to the shops</span>';
   $('impFile').value='';$('imp').value='';pending=null;this.style.display='none';
 };
 $('xlsBtn').onclick=function(){
@@ -370,24 +446,21 @@ $('xlsBtn').onclick=function(){
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='GMX_Catalog_'+today()+'.xlsx';
     document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);
     $('eMsg').innerHTML='<span class="ok">Excel saved ✓</span>';
-  }catch(e){$('eMsg').innerHTML='<span class="warn">Could not build the file — use Copy as text</span>'}
+  }catch(e){$('eMsg').innerHTML='<span class="warn">Could not build the file — use Copy CSV</span>'}
 };
 $('csvBtn').onclick=function(){
   var out='Barcode,Name,SKU,Price,Qty\n';
   Object.keys(CAT).forEach(function(b){out+=[b,'"'+CAT[b][0].replace(/"/g,"'")+'"',CAT[b][1],CAT[b][2],qtyOf(CAT[b])].join(',')+'\n'});
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(out).then(function(){
-    $('eMsg').innerHTML='<span class="ok">Copied ✓ — paste into Excel or Notepad</span>'})}
-  else prompt('Copy this:',out);
+    $('eMsg').innerHTML='<span class="ok">Copied ✓</span>'})}else prompt('Copy this:',out);
 };
 var OWNER='mohgeminix', REPO='data', PATH='catalog.json';
 function getKey(){try{return localStorage.getItem('gmx_key')||''}catch(e){return ''}}
-function keyUI(){var k=getKey();
-  $('keyWrap').style.display=k?'none':'block';
-  $('keyForget').style.display=k?'block':'none';}
+function keyUI(){var k=getKey();$('keyWrap').style.display=k?'none':'block';$('keyForget').style.display=k?'block':'none'}
 $('keySave').onclick=function(){var v=$('keyIn').value.trim();
   if(v.length<20){$('pMsg').innerHTML='<span class="warn">That does not look like a key</span>';return}
   try{localStorage.setItem('gmx_key',v)}catch(e){}
-  $('keyIn').value='';keyUI();$('pMsg').innerHTML='<span class="ok">Key saved on this device ✓ — press Publish now</span>'};
+  $('keyIn').value='';keyUI();$('pMsg').innerHTML='<span class="ok">Key saved ✓ — press Publish now</span>'};
 $('keyForget').onclick=function(){if(confirm('Remove the key from this device?')){
   try{localStorage.removeItem('gmx_key')}catch(e){}keyUI();$('pMsg').textContent=''}};
 function b64u(s){return btoa(unescape(encodeURIComponent(s)))}
@@ -395,44 +468,56 @@ function apiUrl(){return 'https://api.github.com/repos/'+OWNER+'/'+REPO+'/conten
 function publish(retry){
   var k=getKey();
   if(!k){keyUI();$('pMsg').innerHTML='<span class="warn">First save your GitHub key below (one time)</span>';return}
+  var df=diff();
+  if(df.n&&!retry&&!confirm('Publish to both shops?\n+'+df.a.length+' new · '+df.e.length+' edited · '+df.d.length+' deleted'))return;
   UPDATED=today();
   var txt=JSON.stringify({updated:UPDATED,products:CAT});
   $('pMsg').textContent='Publishing…';
   var H={'Authorization':'Bearer '+k,'Accept':'application/vnd.github+json'};
   fetch(apiUrl(),{headers:H}).then(function(r){
     if(r.status===401)throw 'key not accepted — make a new key';
-    if(!r.ok)throw 'cannot reach the file (check the key covers the data repository)';
+    if(!r.ok)throw 'cannot reach the file (does the key cover the data repository?)';
     return r.json();
   }).then(function(j){
     return fetch(apiUrl(),{method:'PUT',headers:H,body:JSON.stringify({
-      message:'update catalog '+UPDATED,content:b64u(txt),sha:j.sha})});
+      message:'catalog '+UPDATED,content:b64u(txt),sha:j.sha})});
   }).then(function(r){
-    if(r.status===409&&!retry){publish(true);return null}
+    if(!r)return;
+    if(r.status===409&&!retry){publish(true);return}
     if(!r.ok)throw 'GitHub refused the save ('+r.status+')';
-    lsSet();
-    $('pMsg').innerHTML='<span class="ok">Published ✓ ('+Object.keys(CAT).length+' products) — shops receive it on their next open</span>';
+    BASE=JSON.parse(JSON.stringify(CAT));LIVE=Object.keys(CAT).length;save();refresh();
+    $('pMsg').innerHTML='<span class="ok">Published ✓ — shops receive it on their next open</span>';
   }).catch(function(e){
     $('pMsg').innerHTML='<span class="warn">'+e+'</span><br><small>The manual Copy way below always works.</small>';
   });
 }
 $('pubBtn').onclick=function(){publish(false)};
-keyUI();
 $('copyBtn').onclick=function(){
   UPDATED=today();
   var txt=JSON.stringify({updated:UPDATED,products:CAT});
-  function done(){$('pMsg').innerHTML='<span class="ok">Copied ✓ ('+Object.keys(CAT).length+' products) — now paste over catalog.json and Commit</span>';lsSet()}
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){prompt('Copy this:',txt);done()})}
-  else{prompt('Copy this:',txt);done()}
+  function done(){$('pMsg').innerHTML='<span class="ok">Copied ✓ — paste over catalog.json on GitHub and Commit</span>'}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){prompt('Copy:',txt);done()})}
+  else{prompt('Copy:',txt);done()}
 };
-function loadLive(silent){
-  fetch('catalog.json?t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()})
-   .then(function(j){if(j&&j.products){CAT=j.products;UPDATED=j.updated||'';lsSet();count();renderList();
-     if(!silent)$('pMsg').innerHTML='<span class="ok">Live catalog loaded ('+Object.keys(CAT).length+' products, '+UPDATED+')</span>'}})
-   .catch(function(){if(!silent)$('pMsg').innerHTML='<span class="warn">Could not load catalog.json</span>'});
+function loadLive(silent,asBase){
+  return fetch('catalog.json?t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()})
+   .then(function(j){if(j&&j.products){
+     LIVE=Object.keys(j.products).length;
+     if(asBase){CAT=j.products;BASE=JSON.parse(JSON.stringify(j.products));UPDATED=j.updated||'';save();renderList()}
+     refresh();
+     if(!silent)$('pMsg').innerHTML='<span class="ok">Live catalog loaded ('+LIVE+' products)</span>'}})
+   .catch(function(){refresh();if(!silent)$('pMsg').innerHTML='<span class="warn">Could not load catalog.json</span>'});
 }
-$('reloadBtn').onclick=function(){if(confirm('Load the live catalog and discard unsaved edits here?'))loadLive(false)};
-var draft=lsGet();
-if(draft&&draft.products&&Object.keys(draft.products).length){CAT=draft.products;UPDATED=draft.updated||'';count();renderList()}
-else loadLive(true);
+$('reloadBtn').onclick=function(){if(confirm('Load the live catalog and discard the draft on this device?'))loadLive(false,true)};
+// start
+var draft=null,base=null;
+try{draft=JSON.parse(localStorage.getItem('gmx_admin')||'null');base=JSON.parse(localStorage.getItem('gmx_base')||'null')}catch(e){}
+if(draft&&draft.products&&Object.keys(draft.products).length){
+  CAT=draft.products;UPDATED=draft.updated||'';
+  BASE=(base&&base['__proto__']===undefined?base:base)||JSON.parse(JSON.stringify(CAT));
+  if(!base)BASE=JSON.parse(JSON.stringify(CAT));
+  refresh();renderList();loadLive(true,false);
+}else{loadLive(true,true)}
+keyUI();
 })();
 </script></body></html>
