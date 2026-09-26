@@ -590,8 +590,6 @@ if(draft&&draft.products&&Object.keys(draft.products).length){
   refresh();renderList();loadLive(true,false);
 }else{loadLive(true,true)}
 keyUI();
-})();
-
 function showPg(p){
   ['Overview','Products','Import','Publish'].forEach(function(x){
     document.getElementById('pg'+x).style.display=(x===p)?'block':'none';
