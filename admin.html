@@ -259,32 +259,62 @@ function digestRows(rows){
   if(!rows.length)return {err:'The file looks empty'};
   var idx=mapHeader(rows[0]), start=1;
   if(idx.bc===-1&&idx.name===-1){idx={bc:0,name:1,sku:2,price:3,qty:4};start=0}
-  if(idx.bc===-1)return {err:'No Barcode column found in the header row'};
-  var add=0,priceUpd=0,bad=[],out={};
+  var bySku=false, SKU2BC={};
+  if(idx.bc===-1){
+    if(idx.name===-1)return {err:'No Barcode column found in the header row'};
+    bySku=true;
+    Object.keys(CAT).forEach(function(b){if(CAT[b][1])SKU2BC[String(CAT[b][1]).toLowerCase()]=b});
+  }
+  var hasPrice=idx.price>-1, hasQty=idx.qty>-1;
+  var acc={}, order=[], bad=[], dupRows=0;
   for(var i=start;i<rows.length;i++){
     var p=rows[i]||[];
-    var bc=String(p[idx.bc]||'').trim().replace(/\s+/g,'').replace(/\.0$/,'');
-    if(!bc)continue;
+    var bc='';
+    if(!bySku){bc=String(p[idx.bc]||'').trim().replace(/\s+/g,'').replace(/\.0$/,'');if(!bc)continue}
+    else{
+      var nm0=String(idx.name>-1?(p[idx.name]||''):'');
+      var rm0=nm0.match(/^\[([^\]]+)\]/);
+      if(!rm0)continue;
+      bc=SKU2BC[rm0[1].trim().toLowerCase()]||'';
+      if(!bc){bad.push('row '+(i+1)+': SKU '+rm0[1]+' not in the catalog — add it first with its barcode');continue}
+    }
     if(/e\+/i.test(bc)){bad.push('row '+(i+1)+': broken barcode '+bc);continue}
     if(!/^\d{6,14}$/.test(bc)){bad.push('row '+(i+1)+': barcode looks wrong: '+bc);continue}
     var name=String(idx.name>-1?(p[idx.name]||''):'').trim();
     var sku=String(idx.sku>-1?(p[idx.sku]||''):'').trim();
-    var price=parseFloat(String(idx.price>-1?(p[idx.price]||'0'):'0').replace(/[^0-9.]/g,''))||0;
-    var qraw=idx.qty>-1?String(p[idx.qty]||'').trim():'';
-    var qty=qraw===''?'':(parseInt(parseFloat(qraw),10)||0);
-    if(CAT[bc]){ // existing item code: keep name & sku, update price + qty only
-      out[bc]=[CAT[bc][0],CAT[bc][1],Math.round(price*100)/100,qty===''?qtyOf(CAT[bc]):qty];priceUpd++;
-    }else{
-      if(!name){bad.push('row '+(i+1)+': new barcode without a name');continue}
-      out[bc]=[name.slice(0,70),sku,Math.round(price*100)/100,qty===''?'':qty];add++;
-    }
+    var bm=name.match(/^\[([^\]]+)\]\s*(.+)$/);
+    if(bm){if(!sku)sku=bm[1];name=bm[2].trim()}
+    var price=hasPrice?(parseFloat(String(p[idx.price]||'0').replace(/[^0-9.]/g,''))||0):null;
+    var q=hasQty?(parseInt(parseFloat(String(p[idx.qty]||'0')),10)||0):null;
+    if(acc[bc]){dupRows++;if(q!=null)acc[bc].qty=(acc[bc].qty||0)+q;
+      if(price!=null&&price>0)acc[bc].price=price;
+      if(!acc[bc].name&&name)acc[bc].name=name;}
+    else{acc[bc]={name:name,sku:sku,price:price,qty:q};order.push(bc)}
   }
-  return {add:add,upd:priceUpd,bad:bad,out:out};
+  var add=0,upd=0,out={};
+  order.forEach(function(bc){
+    var a=acc[bc];
+    if(CAT[bc]){
+      var oldV=CAT[bc];
+      out[bc]=[oldV[0],oldV[1],
+        a.price!=null?Math.round(a.price*100)/100:oldV[2],
+        a.qty!=null?a.qty:qtyOf(oldV)];
+      upd++;
+    }else{
+      if(!a.name){bad.push('new barcode '+bc+' has no name');return}
+      out[bc]=[a.name.slice(0,70),a.sku,a.price!=null?Math.round(a.price*100)/100:0,a.qty!=null?a.qty:''];
+      add++;
+    }
+  });
+  return {add:add,upd:upd,bad:bad,out:out,dups:dupRows,hasPrice:hasPrice,hasQty:hasQty,bySku:bySku};
 }
 function showDigest(r){
   var m=$('iMsg');pending=null;$('applyBtn').style.display='none';
   if(r.err){m.innerHTML='<span class="warn">'+r.err+'</span>';return}
-  var html='<b>'+r.add+'</b> new products · <b>'+r.upd+'</b> existing (price & qty updated, names kept)';
+  var what=r.hasPrice&&r.hasQty?'price & qty':(r.hasQty?'qty only':'price only');
+  var html='<b>'+r.add+'</b> new products · <b>'+r.upd+'</b> existing ('+what+' updated, names kept)';
+  if(r.dups)html+='<br><small>'+r.dups+' extra shelf rows were summed into their products</small>';
+  if(r.bySku)html+='<br><small>matched by SKU (no barcode column in this file)</small>';
   if(r.bad.length)html+='<br><span class="warn">Skipped '+r.bad.length+':</span><br><small>'+r.bad.slice(0,5).join('<br>')+'</small>';
   m.innerHTML=html;
   if(r.add+r.upd>0){pending=r.out;$('applyBtn').style.display='block'}
